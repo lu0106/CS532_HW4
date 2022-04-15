@@ -1,7 +1,8 @@
 /*
 Name: Hung-Yi Lu
 BlazerId: lu0106
-Project #:Homework 4
+Project: #Homework 4
+GitGub: git@github.com:lu0106/CS532_HW4.git
 */
 
 #include <stdio.h>
@@ -21,7 +22,7 @@ pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 // Condition Variable
 pthread_cond_t cv = PTHREAD_COND_INITIALIZER;
 
-// job queue
+// job queue.c
 queue* jobq;
 
 // for loop
@@ -75,15 +76,17 @@ static void * cput(void * arg){
     // Infinite
     for(;;){
 
-        // thread, grab the lock, and release lock
         pthread_mutex_lock(&lock);     // Thread Mutex lock
-
-        while((t = queue_delete(jobq)) == -1){
+        // Thread, grab the lock, and release lock
+//      delete an item from the queue, update the pointers and count, and 
+//      return the item deleted (-1 if queue is null or empty)
+        while((t = queue_delete(jobq)) == -1){  // -1 case wait
             pthread_cond_wait(&cv, &lock);
         }
 
-        pthread_mutex_unlock(&lock);    // Mutex unlock
+        pthread_mutex_unlock(&lock);    // unlock
 
+        // out and err "showjobs" comment
         sprintf(args, "%s >%d.out 2>%d.err", arr[t].com + 7, t, t);
         // running
         arr[t].status = 1;
@@ -102,12 +105,17 @@ void n_thread(int num){
     int t[num];
     int r = 0;
 
+    // Reference https://blog.csdn.net/Primeprime/article/details/105617856
+    // Mutex initialization
     r = pthread_mutex_init(&lock, NULL);
     if (r != 0)
         perror("Thread Error: Mutex Init");
+    
     r = pthread_cond_init(&cv, NULL);
     if (r != 0)
         perror("Thread Error: Cond Init");
+    
+    // create the queue data structure and initialize it 
     jobq = queue_init(4096);
 
     for(k = 0; k < num; k++){
@@ -129,9 +137,10 @@ int main(int argc, char **argv){
         return -1;
     }
 
+    // if P < 1
     num = atoi(argv[1]);
     if(num <= 1){
-        perror("Error: Number should > 0");
+        perror("Error: Number P should > 0");
         return -1;
     }
     n_thread(num);
@@ -141,6 +150,8 @@ int main(int argc, char **argv){
         printf("Enter Command (submithistory, showjobs, submit, clear) -->");
         fgets(fgets_buff, 1024, stdin);
         bufflen = strlen(fgets_buff);
+
+        // enter nothing, continue
         if(bufflen <= 1)
             continue;
         
@@ -197,11 +208,17 @@ int main(int argc, char **argv){
             arr[c].combp = strdup(fgets_buff + 7);
             arr[c].com = strdup(fgets_buff);
 
+
+            // Reference https://blog.csdn.net/fanyun_01/article/details/106975364
             // thread, grab the lock, and release lock
             pthread_mutex_lock(&lock); // Mutex lock
+            // do
             queue_insert(jobq, c);
-            pthread_mutex_unlock(&lock); // Mutex unlock
-            pthread_cond_signal(&cv);
+            // insert an item into the queue, update the pointers and count, and
+            // return the no. of items in the queue (-1 if queue is null or full)
+            pthread_mutex_unlock(&lock); // unlock
+            pthread_cond_signal(&cv);  // returns successfully if no threads are blocked waiting
+            // print add success
             printf("job %d added to the queue\n", c); // success
             c++; // count
         }
